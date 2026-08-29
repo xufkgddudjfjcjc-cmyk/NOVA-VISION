@@ -1,14 +1,12 @@
-NOVA VISION V4.2 LITE
+NOVA VISION V5 — PARTICLE WORLD
 
-性能版，重点保证老款 Intel Mac 的流畅度。
-- 摄像头独立直接显示
-- 摄像头输入目标 480x360 / 24fps
-- Face AI 约 5 FPS
-- Hand AI 约 2 FPS
-- AI 忙时跳帧
-- 粒子上限 45
-- Canvas DPR 上限 1.25
-- 去除高负载 Glitch
-- 保留人脸框、手部骨架、粒子和手势状态
+在 V4.2 Lite 基础上：
+- 人脸成为 Face Core
+- 手掌成为粒子吸引中心
+- 捏合 = GRAB，粒子向手掌聚拢
+- 握拳 = PULL，增强能量
+- 张开手 = BURST，触发粒子爆发
+- 保留轻量化摄像头与低频 AI
+- 粒子上限约 110，避免老 Mac 过载
 
-如果需要更流畅，可关闭 Hands，只保留 Face AI。
+部署：GitHub Pages / HTTPS / localhost。
