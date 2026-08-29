@@ -1,119 +1,119 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NOVA VISION — V4</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>NOVA VISION — V4.1</title>
 <style>
-:root{--y:#ffd21c}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030303;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
-#app{position:relative;width:100%;height:100%}video{display:none}canvas{position:absolute;inset:0;width:100%;height:100%}
-#scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,.025) 4px);mix-blend-mode:screen}
-header{position:absolute;z-index:5;top:22px;left:24px;right:24px;display:flex;justify-content:space-between;letter-spacing:.16em;font-size:12px}.brand{font-weight:700}.live{display:flex;gap:8px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;background:var(--y);box-shadow:0 0 14px var(--y)}
-.panel{position:absolute;z-index:5;left:24px;bottom:24px;padding:13px 16px;border:1px solid #ffffff2b;background:#0009;backdrop-filter:blur(12px);border-radius:12px;min-width:235px}.row{display:flex;justify-content:space-between;gap:30px;font-size:10px;line-height:2.05;color:#999}.row b{color:#fff;font-weight:500}
-#start{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 24px;border:1px solid var(--y);border-radius:12px;background:#080808ed;color:#fff;font-size:14px;letter-spacing:.08em;cursor:pointer;box-shadow:0 0 35px #ffd21c18}
-#hint{position:absolute;z-index:5;left:50%;bottom:26px;transform:translateX(-50%);font-size:10px;opacity:.55;white-space:nowrap}
-.corner{position:absolute;z-index:4;width:24px;height:24px;border-color:#ffd21c99}.c1{left:18px;top:70px;border-left:1px solid;border-top:1px solid}.c2{right:18px;top:70px;border-right:1px solid;border-top:1px solid}.c3{left:18px;bottom:18px;border-left:1px solid;border-bottom:1px solid}.c4{right:18px;bottom:18px;border-right:1px solid;border-bottom:1px solid}
-#flash{position:absolute;inset:0;background:#ffd21c;opacity:0;pointer-events:none;z-index:2}
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030303;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+#app{position:relative;width:100%;height:100%}#camera{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#111;display:block}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,.025) 4px)}
+header{position:absolute;z-index:5;top:22px;left:24px;right:24px;display:flex;justify-content:space-between;letter-spacing:.15em;font-size:12px;text-shadow:0 1px 5px #000}.brand{font-weight:700}.live{display:flex;gap:8px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;background:#ffd21c;box-shadow:0 0 14px #ffd21c}
+.panel{position:absolute;z-index:5;left:24px;bottom:24px;padding:13px 16px;border:1px solid #ffffff35;background:#0009;backdrop-filter:blur(10px);border-radius:12px;min-width:230px}.row{display:flex;justify-content:space-between;gap:30px;font-size:10px;line-height:2.05;color:#aaa}.row b{color:#fff;font-weight:500}
+#start{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 24px;border:1px solid #ffd21c;border-radius:12px;background:#080808ee;color:#fff;font-size:14px;letter-spacing:.08em;cursor:pointer}
+#hint{position:absolute;z-index:5;left:50%;bottom:26px;transform:translateX(-50%);font-size:10px;opacity:.6;white-space:nowrap;text-shadow:0 1px 5px #000}
+#error{position:absolute;z-index:8;left:50%;top:12%;transform:translateX(-50%);max-width:90%;padding:9px 13px;border:1px solid #ffffff28;border-radius:9px;background:#000b;font-size:11px;display:none}
 </style>
 </head>
-<body><div id="app">
-<video id="video" playsinline muted></video><canvas id="view"></canvas><div id="scan"></div><div id="flash"></div>
-<header><div class="brand">NOVA / VISION 04</div><div class="live"><span class="dot"></span><span id="status">STANDBY</span></div></header>
-<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+<body>
+<div id="app">
+<video id="camera" autoplay playsinline muted></video>
+<canvas id="fx"></canvas><div id="scan"></div>
+<header><div class="brand">NOVA / VISION 04.1</div><div class="live"><span class="dot"></span><span id="status">STANDBY</span></div></header>
 <div class="panel">
-<div class="row"><span>FACE</span><b id="face">NOT FOUND</b></div>
-<div class="row"><span>HAND</span><b id="hand">NOT FOUND</b></div>
+<div class="row"><span>CAMERA</span><b id="cam">OFF</b></div>
+<div class="row"><span>FACE AI</span><b id="face">OFF</b></div>
+<div class="row"><span>HAND AI</span><b id="hand">OFF</b></div>
 <div class="row"><span>GESTURE</span><b id="gesture">NONE</b></div>
-<div class="row"><span>PINCH</span><b id="pinch">--</b></div>
-<div class="row"><span>PARTICLES</span><b id="particles">0</b></div>
 <div class="row"><span>FPS</span><b id="fps">--</b></div>
 </div>
-<button id="start">START CAMERA</button><div id="hint">张开手掌 · 握拳 · 捏合拇指食指 · 用手掌移动粒子</div>
+<button id="start">START CAMERA</button>
+<div id="hint">如果 AI 暂时失效，摄像头画面仍会保持显示</div><div id="error"></div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
 <script>
-const v=document.getElementById("video"),c=document.getElementById("view"),x=c.getContext("2d");
+const video=document.getElementById("camera"),canvas=document.getElementById("fx"),ctx=canvas.getContext("2d");
 const $=id=>document.getElementById(id);
-let W,H,dpr,mirror=true,smoothFace=null,particles=[],frames=0,last=performance.now(),flash=0,lastAction=0;
-let latestHands=[];
+let W=0,H=0,dpr=1,mirror=true,faceMesh,handModel,cameraStream;
+let faceLandmarks=null,handLandmarks=null,particles=[],running=false,aiBusy=false,lastAI=0,frames=0,lastFPS=performance.now();
 
-function resize(){dpr=Math.min(devicePixelRatio||1,1.5);W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}addEventListener("resize",resize);resize();
-function pt(q){return{x:(mirror?1-q.x:q.x)*W,y:q.y*H}}
-function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-function faceBox(lm){
+function resize(){dpr=Math.min(devicePixelRatio||1,1.5);W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener("resize",resize);resize();
+
+function p(q){return{x:(mirror?1-q.x:q.x)*W,y:q.y*H}}
+function box(lm){
  let a=1,b=1,d=0,e=0;for(const q of lm){a=Math.min(a,q.x);b=Math.min(b,q.y);d=Math.max(d,q.x);e=Math.max(e,q.y)}
- let px=(d-a)*.12,py=(e-b)*.12;a=Math.max(0,a-px);d=Math.min(1,d+px);b=Math.max(0,b-py);e=Math.min(1,e+py);
- const A=pt({x:a,y:b}),B=pt({x:d,y:e});let r={x:Math.min(A.x,B.x),y:Math.min(A.y,B.y),w:Math.abs(B.x-A.x),h:Math.abs(B.y-A.y)};
- if(smoothFace){r.x=smoothFace.x*.75+r.x*.25;r.y=smoothFace.y*.75+r.y*.25;r.w=smoothFace.w*.75+r.w*.25;r.h=smoothFace.h*.75+r.h*.25}smoothFace=r;
- x.save();x.strokeStyle="#ffd21c";x.lineWidth=2;x.shadowColor="#ffd21c";x.shadowBlur=10;x.strokeRect(r.x,r.y,r.w,r.h);x.shadowBlur=0;x.fillStyle="#ffd21c";x.font="10px sans-serif";x.fillText("FACE // LOCKED",r.x,r.y-8);x.restore();return r
+ const A=p({x:a,y:b}),B=p({x:d,y:e}),r={x:Math.min(A.x,B.x)-8,y:Math.min(A.y,B.y)-8,w:Math.abs(B.x-A.x)+16,h:Math.abs(B.y-A.y)+16};
+ ctx.save();ctx.strokeStyle="#ffd21c";ctx.lineWidth=2;ctx.shadowColor="#ffd21c";ctx.shadowBlur=8;ctx.strokeRect(r.x,r.y,r.w,r.h);ctx.shadowBlur=0;ctx.fillStyle="#ffd21c";ctx.font="10px sans-serif";ctx.fillText("FACE // LOCKED",r.x,r.y-8);ctx.restore();return r
 }
-function handBox(lm){
- let minX=1,minY=1,maxX=0,maxY=0;for(const q of lm){minX=Math.min(minX,q.x);minY=Math.min(minY,q.y);maxX=Math.max(maxX,q.x);maxY=Math.max(maxY,q.y)}
- const A=pt({x:minX,y:minY}),B=pt({x:maxX,y:maxY}),r={x:Math.min(A.x,B.x)-10,y:Math.min(A.y,B.y)-10,w:Math.abs(B.x-A.x)+20,h:Math.abs(B.y-A.y)+20};
- x.save();x.strokeStyle="#ffd21c99";x.lineWidth=1;x.setLineDash([5,5]);x.strokeRect(r.x,r.y,r.w,r.h);x.setLineDash([]);x.restore();return r
+function drawHand(lm){
+ const links=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
+ ctx.save();ctx.strokeStyle="#ffd21c";ctx.fillStyle="#ffd21c";ctx.lineWidth=1.3;ctx.globalAlpha=.85;
+ links.forEach(z=>{let a=p(lm[z[0]]),b=p(lm[z[1]]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()});
+ [4,8,12,16,20].forEach(i=>{let q=p(lm[i]);ctx.beginPath();ctx.arc(q.x,q.y,3,0,Math.PI*2);ctx.fill()});ctx.restore()
 }
-function spawn(cx,cy,n=5,power=1){
- for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=(Math.random()*1.8+.4)*power;
-  particles.push({x:cx+(Math.random()-.5)*30,y:cy+(Math.random()-.5)*30,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:35+Math.random()*65,size:1+Math.random()*2})
- }
+function spawn(cx,cy,n=3){
+ for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=.5+Math.random()*2;particles.push({x:cx+(Math.random()-.5)*18,y:cy+(Math.random()-.5)*18,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:30+Math.random()*55})}
 }
 function drawParticles(target){
- x.save();x.fillStyle="#ffd21c";x.shadowColor="#ffd21c";x.shadowBlur=8;
- for(let i=particles.length-1;i>=0;i--){let q=particles[i];
-  if(target){q.vx+=(target.x-q.x)*.0009;q.vy+=(target.y-q.y)*.0009}
-  q.x+=q.vx;q.y+=q.vy;q.vx*=.985;q.vy*=.985;q.life--;
-  x.globalAlpha=Math.max(0,q.life/85);x.fillRect(q.x,q.y,q.size,q.size);
-  if(q.life<=0)particles.splice(i,1)
- }x.restore()
+ ctx.save();ctx.fillStyle="#ffd21c";ctx.shadowColor="#ffd21c";ctx.shadowBlur=7;
+ for(let i=particles.length-1;i>=0;i--){let q=particles[i];if(target){q.vx+=(target.x-q.x)*.001;q.vy+=(target.y-q.y)*.001}q.x+=q.vx;q.y+=q.vy;q.vx*=.985;q.vy*=.985;q.life--;ctx.globalAlpha=Math.max(0,q.life/80);ctx.fillRect(q.x,q.y,2,2);if(q.life<=0)particles.splice(i,1)}ctx.restore()
 }
-function action(name,cx,cy){let now=performance.now();if(now-lastAction<600)return;lastAction=now;flash=.14;spawn(cx,cy,22,2.4);$("gesture").textContent=name}
-function drawHand(lm){
- const ids=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
- x.save();x.strokeStyle="#ffd21c";x.lineWidth=1.3;x.globalAlpha=.8;
- ids.forEach(pair=>{const a=pt(lm[pair[0]]),b=pt(lm[pair[1]]);x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke()});
- [4,8,12,16,20].forEach(i=>{const p=pt(lm[i]);x.beginPath();x.arc(p.x,p.y,3,0,Math.PI*2);x.fill()});x.restore();
+function showError(msg){$("error").textContent=msg;$("error").style.display="block";setTimeout(()=>$("error").style.display="none",5000)}
+
+async function initAI(){
+ faceMesh=new FaceMesh({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"+f});
+ faceMesh.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.5,minTrackingConfidence:.5});
+ faceMesh.onResults(r=>{faceLandmarks=(r.multiFaceLandmarks||[])[0]||null});
+ handModel=new Hands({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/hands/"+f});
+ handModel.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.55,minTrackingConfidence:.55});
+ handModel.onResults(r=>{handLandmarks=(r.multiHandLandmarks||[])[0]||null});
+ $("face").textContent="READY";$("hand").textContent="READY";
 }
-function results(r){
- x.clearRect(0,0,W,H);
- if(r.image){x.save();if(mirror){x.translate(W,0);x.scale(-1,1)}let k=Math.max(W/r.image.width,H/r.image.height),dw=r.image.width*k,dh=r.image.height*k;x.drawImage(r.image,(W-dw)/2,(H-dh)/2,dw,dh);x.restore()}
- const lm=(r.multiFaceLandmarks||[])[0];
+
+function draw(){
+ if(!running)return;
+ ctx.clearRect(0,0,W,H);
  let target=null;
- if(lm){$("face").textContent="DETECTED";$("status").textContent="LIVE";const b=faceBox(lm);target={x:b.x+b.w/2,y:b.y+b.h/2};spawn(target.x,target.y,2)}
- else{$("face").textContent="NOT FOUND";smoothFace=null}
- if(latestHands.length){
-   $("hand").textContent=latestHands.length+" DETECTED";
-   const h=latestHands[0];drawHand(h);const hb=handBox(h);
-   const palm=pt(h[9]);target=palm;
-   const pinch=dist(h[4],h[8]);
-   $("pinch").textContent=pinch<.055?"YES":"NO";
-   const fingers=[8,12,16,20].map(i=>dist(h[i],h[0])>dist(h[5],h[0])*.95);
-   const open=fingers.filter(Boolean).length>=3;
-   const fist=fingers.filter(Boolean).length===0;
-   if(pinch<.055){$("gesture").textContent="PINCH";spawn(palm.x,palm.y,7,1.8)}
-   else if(open){$("gesture").textContent="OPEN HAND";spawn(palm.x,palm.y,5,1.4)}
-   else if(fist){$("gesture").textContent="FIST";spawn(palm.x,palm.y,3,1)}
-   if(pinch<.045) action("PINCH",palm.x,palm.y);
- }else{$("hand").textContent="NOT FOUND";$("pinch").textContent="--";if(performance.now()-lastAction>900)$("gesture").textContent="NONE"}
- drawParticles(target);$("particles").textContent=particles.length;
- if(flash>0){$("flash").style.opacity=flash;flash*=.78;if(flash<.01)flash=0}
- frames++;let now=performance.now();if(now-last>1000){$("fps").textContent=Math.round(frames*1000/(now-last));frames=0;last=now}
+ if(faceLandmarks){let b=box(faceLandmarks);target={x:b.x+b.w/2,y:b.y+b.h/2};$("face").textContent="TRACKING";spawn(target.x,target.y,1)}else $("face").textContent="SEARCHING";
+ if(handLandmarks){drawHand(handLandmarks);$("hand").textContent="TRACKING";const palm=p(handLandmarks[9]);target=palm;spawn(palm.x,palm.y,2);
+   const pinch=Math.hypot(handLandmarks[4].x-handLandmarks[8].x,handLandmarks[4].y-handLandmarks[8].y);
+   $("gesture").textContent=pinch<.055?"PINCH":"HAND";
+ }else{$("hand").textContent="SEARCHING";if(!faceLandmarks)$("gesture").textContent="NONE"}
+ drawParticles(target);
+ frames++;let now=performance.now();if(now-lastFPS>1000){$("fps").textContent=Math.round(frames*1000/(now-lastFPS));frames=0;lastFPS=now}
+ requestAnimationFrame(draw);
 }
-const face=new FaceMesh({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"+f});
-face.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.5,minTrackingConfidence:.5});face.onResults(results);
-const hands=new Hands({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/hands/"+f});
-hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.55,minTrackingConfidence:.55});
-hands.onResults(r=>{latestHands=r.multiHandLandmarks||[]});
+
+async function aiLoop(){
+ if(!running)return;
+ const now=performance.now();
+ // 老 Mac 上让 AI 低频运行；摄像头视频本身不依赖 AI
+ if(!aiBusy && now-lastAI>180){
+   aiBusy=true;lastAI=now;
+   try{await faceMesh.send({image:video})}catch(e){console.warn("face",e)}
+   // 每约 360ms 再跑一次手部，减少双模型竞争
+   if(now%720<360){try{await handModel.send({image:video})}catch(e){console.warn("hand",e)}}
+   aiBusy=false;
+ }
+ setTimeout(aiLoop,40);
+}
 
 $("start").onclick=async()=>{
  const btn=$("start");btn.disabled=true;$("status").textContent="STARTING";
  try{
-  const cam=new Camera(v,{width:640,height:480,onFrame:async()=>{
-    await Promise.all([face.send({image:v}),hands.send({image:v})])
-  }});
-  await cam.start();btn.style.display="none";$("status").textContent="SEARCHING";
- }catch(e){console.error(e);$("status").textContent="ERROR";btn.disabled=false;btn.textContent="TRY AGAIN";alert("请使用 HTTPS、GitHub Pages 或 localhost，并允许摄像头权限。")}
+   cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640,max:640},height:{ideal:480,max:480},facingMode:"user"},audio:false});
+   video.srcObject=cameraStream;await video.play();
+   $("cam").textContent="ON";$("status").textContent="LIVE";running=true;btn.style.display="none";
+   await initAI();draw();aiLoop();
+ }catch(e){
+   console.error(e);$("cam").textContent="ERROR";$("status").textContent="ERROR";btn.disabled=false;btn.textContent="TRY AGAIN";
+   showError("摄像头启动失败："+(e.name||"Unknown")+". 请检查浏览器摄像头权限，并确认使用 HTTPS / GitHub Pages / localhost。");
+ }
 };
-</script></body></html>
+</script>
+</body></html>
