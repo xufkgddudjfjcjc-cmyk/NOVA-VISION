@@ -3,33 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NOVA VISION — V4.1</title>
+<title>NOVA VISION — V4.2 LITE</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030303;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
 #app{position:relative;width:100%;height:100%}#camera{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#111;display:block}
 #fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-#scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,.025) 4px)}
-header{position:absolute;z-index:5;top:22px;left:24px;right:24px;display:flex;justify-content:space-between;letter-spacing:.15em;font-size:12px;text-shadow:0 1px 5px #000}.brand{font-weight:700}.live{display:flex;gap:8px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;background:#ffd21c;box-shadow:0 0 14px #ffd21c}
-.panel{position:absolute;z-index:5;left:24px;bottom:24px;padding:13px 16px;border:1px solid #ffffff35;background:#0009;backdrop-filter:blur(10px);border-radius:12px;min-width:230px}.row{display:flex;justify-content:space-between;gap:30px;font-size:10px;line-height:2.05;color:#aaa}.row b{color:#fff;font-weight:500}
-#start{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 24px;border:1px solid #ffd21c;border-radius:12px;background:#080808ee;color:#fff;font-size:14px;letter-spacing:.08em;cursor:pointer}
-#hint{position:absolute;z-index:5;left:50%;bottom:26px;transform:translateX(-50%);font-size:10px;opacity:.6;white-space:nowrap;text-shadow:0 1px 5px #000}
-#error{position:absolute;z-index:8;left:50%;top:12%;transform:translateX(-50%);max-width:90%;padding:9px 13px;border:1px solid #ffffff28;border-radius:9px;background:#000b;font-size:11px;display:none}
+#scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 5px,rgba(255,255,255,.018) 6px)}
+header{position:absolute;z-index:5;top:20px;left:20px;right:20px;display:flex;justify-content:space-between;letter-spacing:.14em;font-size:11px;text-shadow:0 1px 5px #000}.brand{font-weight:700}.live{display:flex;gap:7px;align-items:center}.dot{width:6px;height:6px;border-radius:50%;background:#ffd21c;box-shadow:0 0 10px #ffd21c}
+.panel{position:absolute;z-index:5;left:20px;bottom:20px;padding:11px 14px;border:1px solid #ffffff28;background:#0009;border-radius:10px;min-width:205px}.row{display:flex;justify-content:space-between;gap:25px;font-size:9px;line-height:1.9;color:#999}.row b{color:#fff;font-weight:500}
+#start{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);padding:13px 22px;border:1px solid #ffd21c;border-radius:11px;background:#080808ee;color:#fff;font-size:13px;letter-spacing:.07em}
+#hint{position:absolute;z-index:5;left:50%;bottom:20px;transform:translateX(-50%);font-size:9px;opacity:.55;white-space:nowrap;text-shadow:0 1px 5px #000}
 </style>
 </head>
-<body>
-<div id="app">
-<video id="camera" autoplay playsinline muted></video>
-<canvas id="fx"></canvas><div id="scan"></div>
-<header><div class="brand">NOVA / VISION 04.1</div><div class="live"><span class="dot"></span><span id="status">STANDBY</span></div></header>
+<body><div id="app">
+<video id="camera" autoplay playsinline muted></video><canvas id="fx"></canvas><div id="scan"></div>
+<header><div class="brand">NOVA / VISION 04.2 LITE</div><div class="live"><span class="dot"></span><span id="status">STANDBY</span></div></header>
 <div class="panel">
 <div class="row"><span>CAMERA</span><b id="cam">OFF</b></div>
 <div class="row"><span>FACE AI</span><b id="face">OFF</b></div>
 <div class="row"><span>HAND AI</span><b id="hand">OFF</b></div>
 <div class="row"><span>GESTURE</span><b id="gesture">NONE</b></div>
-<div class="row"><span>FPS</span><b id="fps">--</b></div>
+<div class="row"><span>RENDER FPS</span><b id="fps">--</b></div>
+<div class="row"><span>AI FPS</span><b id="aifps">--</b></div>
 </div>
-<button id="start">START CAMERA</button>
-<div id="hint">如果 AI 暂时失效，摄像头画面仍会保持显示</div><div id="error"></div>
+<button id="start">START CAMERA</button><div id="hint">LITE MODE · 为老款 Mac 优化</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
@@ -38,82 +35,71 @@ header{position:absolute;z-index:5;top:22px;left:24px;right:24px;display:flex;ju
 <script>
 const video=document.getElementById("camera"),canvas=document.getElementById("fx"),ctx=canvas.getContext("2d");
 const $=id=>document.getElementById(id);
-let W=0,H=0,dpr=1,mirror=true,faceMesh,handModel,cameraStream;
-let faceLandmarks=null,handLandmarks=null,particles=[],running=false,aiBusy=false,lastAI=0,frames=0,lastFPS=performance.now();
+let W=0,H=0,dpr=1,mirror=true,faceMesh,handModel,stream,running=false,aiBusy=false;
+let face=null,hand=null,particles=[],lastFaceAI=0,lastHandAI=0,renderFrames=0,aiFrames=0,lastStats=performance.now(),lastFaceAt=0,lastHandAt=0;
 
-function resize(){dpr=Math.min(devicePixelRatio||1,1.5);W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
+function resize(){dpr=Math.min(devicePixelRatio||1,1.25);W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
 addEventListener("resize",resize);resize();
-
 function p(q){return{x:(mirror?1-q.x:q.x)*W,y:q.y*H}}
-function box(lm){
- let a=1,b=1,d=0,e=0;for(const q of lm){a=Math.min(a,q.x);b=Math.min(b,q.y);d=Math.max(d,q.x);e=Math.max(e,q.y)}
- const A=p({x:a,y:b}),B=p({x:d,y:e}),r={x:Math.min(A.x,B.x)-8,y:Math.min(A.y,B.y)-8,w:Math.abs(B.x-A.x)+16,h:Math.abs(B.y-A.y)+16};
- ctx.save();ctx.strokeStyle="#ffd21c";ctx.lineWidth=2;ctx.shadowColor="#ffd21c";ctx.shadowBlur=8;ctx.strokeRect(r.x,r.y,r.w,r.h);ctx.shadowBlur=0;ctx.fillStyle="#ffd21c";ctx.font="10px sans-serif";ctx.fillText("FACE // LOCKED",r.x,r.y-8);ctx.restore();return r
+function faceBox(lm){
+ let x1=1,y1=1,x2=0,y2=0;for(const q of lm){x1=Math.min(x1,q.x);y1=Math.min(y1,q.y);x2=Math.max(x2,q.x);y2=Math.max(y2,q.y)}
+ const A=p({x:x1,y:y1}),B=p({x:x2,y:y2}),r={x:Math.min(A.x,B.x)-7,y:Math.min(A.y,B.y)-7,w:Math.abs(B.x-A.x)+14,h:Math.abs(B.y-A.y)+14};
+ ctx.save();ctx.strokeStyle="#ffd21c";ctx.lineWidth=1.7;ctx.strokeRect(r.x,r.y,r.w,r.h);ctx.fillStyle="#ffd21c";ctx.font="9px sans-serif";ctx.fillText("FACE",r.x,r.y-7);ctx.restore();return r
 }
 function drawHand(lm){
  const links=[[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
- ctx.save();ctx.strokeStyle="#ffd21c";ctx.fillStyle="#ffd21c";ctx.lineWidth=1.3;ctx.globalAlpha=.85;
- links.forEach(z=>{let a=p(lm[z[0]]),b=p(lm[z[1]]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()});
- [4,8,12,16,20].forEach(i=>{let q=p(lm[i]);ctx.beginPath();ctx.arc(q.x,q.y,3,0,Math.PI*2);ctx.fill()});ctx.restore()
+ ctx.save();ctx.strokeStyle="#ffd21c";ctx.fillStyle="#ffd21c";ctx.lineWidth=1;ctx.globalAlpha=.7;
+ for(const z of links){const a=p(lm[z[0]]),b=p(lm[z[1]]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke()}
+ for(const i of [4,8,12,16,20]){const q=p(lm[i]);ctx.beginPath();ctx.arc(q.x,q.y,2.2,0,Math.PI*2);ctx.fill()}ctx.restore()
 }
-function spawn(cx,cy,n=3){
- for(let i=0;i<n;i++){let a=Math.random()*Math.PI*2,s=.5+Math.random()*2;particles.push({x:cx+(Math.random()-.5)*18,y:cy+(Math.random()-.5)*18,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:30+Math.random()*55})}
+function spawn(cx,cy,n){
+ if(particles.length>45)return;
+ for(let i=0;i<n;i++){const a=Math.random()*6.28,s=.35+Math.random()*1.3;particles.push({x:cx,y:cy,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:25+Math.random()*35})}
 }
-function drawParticles(target){
- ctx.save();ctx.fillStyle="#ffd21c";ctx.shadowColor="#ffd21c";ctx.shadowBlur=7;
- for(let i=particles.length-1;i>=0;i--){let q=particles[i];if(target){q.vx+=(target.x-q.x)*.001;q.vy+=(target.y-q.y)*.001}q.x+=q.vx;q.y+=q.vy;q.vx*=.985;q.vy*=.985;q.life--;ctx.globalAlpha=Math.max(0,q.life/80);ctx.fillRect(q.x,q.y,2,2);if(q.life<=0)particles.splice(i,1)}ctx.restore()
-}
-function showError(msg){$("error").textContent=msg;$("error").style.display="block";setTimeout(()=>$("error").style.display="none",5000)}
-
-async function initAI(){
- faceMesh=new FaceMesh({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"+f});
- faceMesh.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.5,minTrackingConfidence:.5});
- faceMesh.onResults(r=>{faceLandmarks=(r.multiFaceLandmarks||[])[0]||null});
- handModel=new Hands({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/hands/"+f});
- handModel.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.55,minTrackingConfidence:.55});
- handModel.onResults(r=>{handLandmarks=(r.multiHandLandmarks||[])[0]||null});
- $("face").textContent="READY";$("hand").textContent="READY";
-}
-
-function draw(){
+function render(){
  if(!running)return;
- ctx.clearRect(0,0,W,H);
- let target=null;
- if(faceLandmarks){let b=box(faceLandmarks);target={x:b.x+b.w/2,y:b.y+b.h/2};$("face").textContent="TRACKING";spawn(target.x,target.y,1)}else $("face").textContent="SEARCHING";
- if(handLandmarks){drawHand(handLandmarks);$("hand").textContent="TRACKING";const palm=p(handLandmarks[9]);target=palm;spawn(palm.x,palm.y,2);
-   const pinch=Math.hypot(handLandmarks[4].x-handLandmarks[8].x,handLandmarks[4].y-handLandmarks[8].y);
-   $("gesture").textContent=pinch<.055?"PINCH":"HAND";
- }else{$("hand").textContent="SEARCHING";if(!faceLandmarks)$("gesture").textContent="NONE"}
- drawParticles(target);
- frames++;let now=performance.now();if(now-lastFPS>1000){$("fps").textContent=Math.round(frames*1000/(now-lastFPS));frames=0;lastFPS=now}
- requestAnimationFrame(draw);
+ ctx.clearRect(0,0,W,H);let target=null;
+ if(face && performance.now()-lastFaceAt<800){const b=faceBox(face);target={x:b.x+b.w/2,y:b.y+b.h/2};$("face").textContent="TRACKING"}
+ else $("face").textContent="SEARCHING";
+ if(hand && performance.now()-lastHandAt<900){drawHand(hand);const q=p(hand[9]);target=q;$("hand").textContent="TRACKING"}
+ else $("hand").textContent="SEARCHING";
+ if(target)spawn(target.x,target.y,1);
+ ctx.save();ctx.fillStyle="#ffd21c";
+ for(let i=particles.length-1;i>=0;i--){const q=particles[i];if(target){q.vx+=(target.x-q.x)*.0006;q.vy+=(target.y-q.y)*.0006}q.x+=q.vx;q.y+=q.vy;q.vx*=.99;q.vy*=.99;q.life--;ctx.globalAlpha=q.life/60;ctx.fillRect(q.x,q.y,1.5,1.5);if(q.life<=0)particles.splice(i,1)}
+ ctx.restore();
+ renderFrames++;const now=performance.now();if(now-lastStats>1000){$("fps").textContent=renderFrames;$("aifps").textContent=aiFrames;renderFrames=0;aiFrames=0;lastStats=now}$("gesture").textContent=hand?"HAND":"FACE";requestAnimationFrame(render)
 }
-
 async function aiLoop(){
  if(!running)return;
  const now=performance.now();
- // 老 Mac 上让 AI 低频运行；摄像头视频本身不依赖 AI
- if(!aiBusy && now-lastAI>180){
-   aiBusy=true;lastAI=now;
-   try{await faceMesh.send({image:video})}catch(e){console.warn("face",e)}
-   // 每约 360ms 再跑一次手部，减少双模型竞争
-   if(now%720<360){try{await handModel.send({image:video})}catch(e){console.warn("hand",e)}}
-   aiBusy=false;
+ if(!aiBusy){
+  aiBusy=true;
+  try{
+   // Face: ~5 FPS
+   if(now-lastFaceAI>200){lastFaceAI=now;await faceMesh.send({image:video});aiFrames++;lastFaceAt=now}
+   // Hands: ~2 FPS, staggered away from Face
+   if(now-lastHandAI>500){lastHandAI=now;await handModel.send({image:video});aiFrames++;lastHandAt=now}
+  }catch(e){console.warn("AI frame skipped",e)}
+  aiBusy=false;
  }
- setTimeout(aiLoop,40);
+ setTimeout(aiLoop,30);
 }
-
+async function initAI(){
+ faceMesh=new FaceMesh({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"+f});
+ faceMesh.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.55,minTrackingConfidence:.55});
+ faceMesh.onResults(r=>{face=(r.multiFaceLandmarks||[])[0]||null});
+ handModel=new Hands({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/hands/"+f});
+ handModel.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.6,minTrackingConfidence:.6});
+ handModel.onResults(r=>{hand=(r.multiHandLandmarks||[])[0]||null});
+ $("face").textContent="READY";$("hand").textContent="READY"
+}
 $("start").onclick=async()=>{
- const btn=$("start");btn.disabled=true;$("status").textContent="STARTING";
+ const b=$("start");b.disabled=true;$("status").textContent="STARTING";
  try{
-   cameraStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640,max:640},height:{ideal:480,max:480},facingMode:"user"},audio:false});
-   video.srcObject=cameraStream;await video.play();
-   $("cam").textContent="ON";$("status").textContent="LIVE";running=true;btn.style.display="none";
-   await initAI();draw();aiLoop();
- }catch(e){
-   console.error(e);$("cam").textContent="ERROR";$("status").textContent="ERROR";btn.disabled=false;btn.textContent="TRY AGAIN";
-   showError("摄像头启动失败："+(e.name||"Unknown")+". 请检查浏览器摄像头权限，并确认使用 HTTPS / GitHub Pages / localhost。");
- }
+  if(!navigator.mediaDevices?.getUserMedia)throw new Error("NO_CAMERA_API");
+  stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:480,max:640},height:{ideal:360,max:480},frameRate:{ideal:24,max:30},facingMode:"user"},audio:false});
+  video.srcObject=stream;await video.play();$("cam").textContent="ON";$("status").textContent="LIVE";running=true;b.style.display="none";
+  await initAI();render();aiLoop();
+ }catch(e){console.error(e);$("status").textContent="ERROR";$("cam").textContent="ERROR";b.disabled=false;b.textContent="TRY AGAIN";alert("摄像头启动失败。请检查浏览器权限，并用 HTTPS / GitHub Pages / localhost 打开。")}
 };
-</script>
-</body></html>
+</script></body></html>
