@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOVA VISION — V1</title>
+<style>
+:root{--yellow:#ffd21c;--bg:#050505}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+body{user-select:none}
+#app{position:relative;width:100%;height:100%;background:#050505}
+video{display:none}
+#view{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#grain{position:absolute;inset:0;pointer-events:none;opacity:.08;background-image:radial-gradient(rgba(255,255,255,.7) .5px,transparent .5px);background-size:4px 4px;mix-blend-mode:screen}
+header{position:absolute;z-index:5;top:22px;left:24px;right:24px;display:flex;justify-content:space-between;align-items:center}
+.brand{font-weight:700;letter-spacing:.18em;font-size:14px}
+.badge{display:flex;align-items:center;gap:8px;font-size:11px;letter-spacing:.1em;opacity:.85}
+.live{width:7px;height:7px;border-radius:50%;background:var(--yellow);box-shadow:0 0 12px var(--yellow)}
+.panel{position:absolute;z-index:5;left:24px;bottom:24px;padding:14px 16px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.42);backdrop-filter:blur(12px);border-radius:12px;min-width:190px}
+.row{display:flex;justify-content:space-between;gap:30px;font-size:11px;line-height:2;color:#aaa}
+.row b{color:#fff;font-weight:500}
+#start{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 22px;border:1px solid var(--yellow);border-radius:12px;background:rgba(5,5,5,.9);color:#fff;font-size:14px;letter-spacing:.06em;cursor:pointer;box-shadow:0 0 30px rgba(255,210,28,.1)}
+#start:hover{background:#111}
+#message{position:absolute;z-index:5;left:50%;top:58%;transform:translateX(-50%);font-size:11px;opacity:.55;white-space:nowrap}
+.corner{position:absolute;z-index:4;width:22px;height:22px;border-color:rgba(255,210,28,.65);pointer-events:none}
+.c1{left:20px;top:78px;border-left:1px solid;border-top:1px solid}.c2{right:20px;top:78px;border-right:1px solid;border-top:1px solid}
+.c3{left:20px;bottom:20px;border-left:1px solid;border-bottom:1px solid}.c4{right:20px;bottom:20px;border-right:1px solid;border-bottom:1px solid}
+@media(max-width:600px){header{top:16px;left:16px;right:16px}.panel{left:16px;bottom:16px}.corner{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+<video id="video" playsinline muted></video>
+<canvas id="view"></canvas>
+<div id="grain"></div>
+<header>
+  <div class="brand">NOVA / VISION</div>
+  <div class="badge"><span class="live"></span><span id="status">STANDBY</span></div>
+</header>
+<div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
+<div class="panel">
+  <div class="row"><span>FACE</span><b id="face">NOT FOUND</b></div>
+  <div class="row"><span>TRACKING</span><b id="tracking">OFF</b></div>
+  <div class="row"><span>FPS</span><b id="fps">--</b></div>
+</div>
+<button id="start">START CAMERA</button>
+<div id="message">V1 · Face tracking experiment</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script>
+const video=document.getElementById("video"), canvas=document.getElementById("view"), ctx=canvas.getContext("2d");
+const start=document.getElementById("start"), statusEl=document.getElementById("status");
+const faceEl=document.getElementById("face"), trackEl=document.getElementById("tracking"), fpsEl=document.getElementById("fps");
+let W=0,H=0,dpr=1,mirror=true,frames=0,lastFps=performance.now(),smooth=null;
+
+function resize(){
+  dpr=Math.min(window.devicePixelRatio||1,1.5);
+  W=canvas.clientWidth; H=canvas.clientHeight;
+  canvas.width=Math.round(W*dpr); canvas.height=Math.round(H*dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+addEventListener("resize",resize); resize();
+
+function point(p){return{x:(mirror?1-p.x:p.x)*W,y:p.y*H}}
+function drawBox(lm){
+  let minX=1,minY=1,maxX=0,maxY=0;
+  for(const p of lm){minX=Math.min(minX,p.x);minY=Math.min(minY,p.y);maxX=Math.max(maxX,p.x);maxY=Math.max(maxY,p.y)}
+  const px=(maxX-minX)*.12,py=(maxY-minY)*.12;
+  minX=Math.max(0,minX-px);maxX=Math.min(1,maxX+px);minY=Math.max(0,minY-py);maxY=Math.min(1,maxY+py);
+  const a=point({x:minX,y:minY}),b=point({x:maxX,y:maxY});
+  let x=Math.min(a.x,b.x),y=Math.min(a.y,b.y),w=Math.abs(b.x-a.x),h=Math.abs(b.y-a.y);
+  if(smooth){x=smooth.x*.75+x*.25;y=smooth.y*.75+y*.25;w=smooth.w*.75+w*.25;h=smooth.h*.75+h*.25}
+  smooth={x,y,w,h};
+  ctx.save();
+  ctx.strokeStyle="#ffd21c";ctx.lineWidth=2;ctx.shadowColor="#ffd21c";ctx.shadowBlur=9;
+  ctx.strokeRect(x,y,w,h);ctx.shadowBlur=0;
+  ctx.fillStyle="#ffd21c";ctx.font="10px -apple-system,BlinkMacSystemFont,sans-serif";ctx.fillText("FACE DETECTED",x,y-9);
+  const s=11;ctx.lineWidth=3;
+  [[x,y,1,1],[x+w,y,-1,1],[x,y+h,1,-1],[x+w,y+h,-1,-1]].forEach(c=>{
+    ctx.beginPath();ctx.moveTo(c[0],c[1]+c[3]*s);ctx.lineTo(c[0],c[1]);ctx.lineTo(c[0]+c[2]*s,c[1]);ctx.stroke()
+  });
+  ctx.restore();
+  return {x,y,w,h};
+}
+function drawPoints(lm){
+  const ids=[10,33,61,199,263,291,152];
+  ctx.save();ctx.fillStyle="#ffd21c";ctx.shadowColor="#ffd21c";ctx.shadowBlur=7;
+  ids.forEach(i=>{const p=point(lm[i]);ctx.beginPath();ctx.arc(p.x,p.y,2,0,Math.PI*2);ctx.fill()});
+  ctx.restore();
+}
+function results(r){
+  ctx.clearRect(0,0,W,H);
+  if(r.image){
+    ctx.save();
+    if(mirror){ctx.translate(W,0);ctx.scale(-1,1)}
+    const k=Math.max(W/r.image.width,H/r.image.height);
+    const dw=r.image.width*k,dh=r.image.height*k;
+    ctx.drawImage(r.image,(W-dw)/2,(H-dh)/2,dw,dh);
+    ctx.restore();
+  }
+  const faces=r.multiFaceLandmarks||[];
+  if(faces.length){
+    faceEl.textContent="DETECTED";trackEl.textContent="ON";statusEl.textContent="LIVE";
+    drawBox(faces[0]);drawPoints(faces[0]);
+  }else{
+    faceEl.textContent="NOT FOUND";trackEl.textContent="SEARCHING";statusEl.textContent="SEARCHING";smooth=null;
+  }
+  frames++;
+  const now=performance.now();
+  if(now-lastFps>1000){fpsEl.textContent=Math.round(frames*1000/(now-lastFps));frames=0;lastFps=now}
+}
+
+const mesh=new FaceMesh({locateFile:file=>"https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"+file});
+mesh.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.5,minTrackingConfidence:.5});
+mesh.onResults(results);
+
+start.onclick=async()=>{
+  start.disabled=true;statusEl.textContent="STARTING";
+  try{
+    const camera=new Camera(video,{width:640,height:480,onFrame:async()=>await mesh.send({image:video})});
+    await camera.start();
+    start.style.display="none";
+    statusEl.textContent="SEARCHING";
+  }catch(err){
+    console.error(err);
+    statusEl.textContent="ERROR";
+    start.disabled=false;
+    start.textContent="TRY AGAIN";
+    alert("摄像头启动失败。请使用 HTTPS / GitHub Pages / localhost，并允许浏览器访问摄像头。");
+  }
+};
+</script>
+</body>
+</html>
