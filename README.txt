@@ -1,14 +1,10 @@
-NOVA VISION V1
+NOVA VISION V2
+在 V1 基础上增加：
+- 粒子跟随
+- 扫描线
+- Glitch 故障视觉
+- 张嘴时增强 glitch 和粒子
+- 更完整的 HUD
+- 继续保持低负载设计
 
-把 index.html 上传到一个新的 GitHub 仓库，并开启 GitHub Pages。
-打开网站后点击 START CAMERA，允许摄像头权限。
-
-V1 功能：
-- 摄像头实时画面
-- MediaPipe 单人脸追踪
-- 黄色人脸框
-- 少量人脸关键点
-- FPS
-- 轻量化，适合较老的 Mac
-
-下一版 V2 可加入粒子、扫描线、故障效果、眨眼/张嘴互动。
+部署：将 index.html 上传到 GitHub Pages，使用 HTTPS 打开并允许摄像头。
