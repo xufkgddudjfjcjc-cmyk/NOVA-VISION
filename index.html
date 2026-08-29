@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>NOVA VISION — V5.3</title>
+<title>NOVA VISION — V5.4</title>
 <style>
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030303;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
 #app{position:relative;width:100%;height:100%}#camera{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);background:#080808}
@@ -22,14 +22,14 @@ header{position:absolute;z-index:5;top:20px;left:20px;right:20px;display:flex;ju
 <div class="panel">
 <div class="row"><span>CAMERA</span><b id="cam">OFF</b></div>
 <div class="row"><span>FACE AI</span><b id="face">OFF</b></div>
-<div class="row"><span>HAND AI</span><button id="handToggle">OFF</button></div>
+<div class="row"><span>HAND AI</span><b id="handMode">24 FPS</b></div>
 <div class="row"><span>FACE</span><b id="detected">NOT FOUND</b></div>
 <div class="row"><span>GESTURE</span><b id="gesture">NONE</b></div>
 <div class="row"><span>PARTICLES</span><b id="count">0</b></div>
 <div class="row"><span>RENDER FPS</span><b id="fps">--</b></div>
 <div class="row"><span>AI FPS</span><b id="aifps">--</b></div>
 </div>
-<button id="start">START CAMERA</button><div id="message">V5.3 STABLE · HAND AI 默认关闭</div>
+<button id="start">START CAMERA</button><div id="message">V5.4 24FPS · FACE + HAND AI · 24 FPS</div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
@@ -37,7 +37,7 @@ header{position:absolute;z-index:5;top:20px;left:20px;right:20px;display:flex;ju
 <script>
 const video=document.getElementById("camera"),canvas=document.getElementById("fx"),ctx=canvas.getContext("2d");
 const $=id=>document.getElementById(id);
-let W=0,H=0,dpr=1,stream=null,faceMesh=null,hands=null,running=false,busy=false,handOn=false;
+let W=0,H=0,dpr=1,stream=null,faceMesh=null,hands=null,running=false,busy=false,handOn=true;
 let face=null,hand=null,particles=[],lastFace=0,lastHand=0,renderFrames=0,aiFrames=0,lastStats=performance.now();
 
 function resize(){dpr=Math.min(devicePixelRatio||1,1.25);W=canvas.clientWidth;H=canvas.clientHeight;canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0)}
@@ -69,15 +69,20 @@ function render(){
  ctx.save();ctx.fillStyle="#ffd21c";ctx.shadowColor="#ffd21c";ctx.shadowBlur=6;
  for(let i=particles.length-1;i>=0;i--){const q=particles[i];q.x+=q.vx;q.y+=q.vy;q.vx*=.992;q.vy*=.992;q.life--;ctx.globalAlpha=Math.max(0,q.life/70);ctx.fillRect(q.x,q.y,1.6,1.6);if(q.life<=0)particles.splice(i,1)}
  ctx.restore();$("count").textContent=particles.length;
- renderFrames++;const now=performance.now();if(now-lastStats>1000){$("fps").textContent=renderFrames;$("aifps").textContent=aiFrames;renderFrames=0;aiFrames=0;lastStats=now}requestAnimationFrame(render)
+ renderFrames++;const now=performance.now();if(now-lastStats>1000){$("fps").textContent=renderFrames;$("aifps").textContent=aiFrames*0.5;renderFrames=0;aiFrames=0;lastStats=now}setTimeout(render,41.67)
 }
 async function aiLoop(){
- if(!running)return;const now=performance.now();
+ if(!running)return;
+ const started=performance.now();
  if(!busy){busy=true;try{
-  if(now-lastFace>=230){lastFace=now;await faceMesh.send({image:video});aiFrames++}
-  if(handOn&&now-lastHand>=650){lastHand=now;await hands.send({image:video});aiFrames++}
+   // 24 FPS target: both Face and Hand AI are processed every tick.
+   await faceMesh.send({image:video});
+   aiFrames++;
+   await hands.send({image:video});
+   aiFrames++;
  }catch(e){console.warn("AI frame skipped",e)}busy=false}
- setTimeout(aiLoop,35)
+ const elapsed=performance.now()-started;
+ setTimeout(aiLoop,Math.max(0,41.67-elapsed));
 }
 async function initAI(){
  faceMesh=new FaceMesh({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"+f});
@@ -87,14 +92,11 @@ async function initAI(){
  hands.setOptions({maxNumHands:1,modelComplexity:0,minDetectionConfidence:.6,minTrackingConfidence:.6});
  hands.onResults(r=>{hand=(r.multiHandLandmarks||[])[0]||null});
 }
-$("handToggle").onclick=()=>{
- handOn=!handOn;$("handToggle").textContent=handOn?"ON":"OFF";$("handToggle").classList.toggle("on",handOn);
- if(!handOn){hand=null;$("gesture").textContent="NONE";$("hand").textContent="OFF"}else $("hand").textContent="READY";
-}
+$("handMode").textContent="24 FPS";
 $("start").onclick=async()=>{
  const b=$("start");b.disabled=true;$("status").textContent="STARTING";
  try{
-  stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:480,max:640},height:{ideal:360,max:480},frameRate:{ideal:24,max:30},facingMode:"user"},audio:false});
+  stream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:480,max:640},height:{ideal:360,max:480},frameRate:{ideal:24,max:24},facingMode:"user"},audio:false});
   video.srcObject=stream;await video.play();$("cam").textContent="ON";$("status").textContent="LIVE";b.style.display="none";
   await initAI();$("face").textContent="READY";running=true;render();aiLoop();
  }catch(e){console.error(e);$("status").textContent="ERROR";$("cam").textContent="ERROR";b.disabled=false;b.textContent="TRY AGAIN";$("message").textContent="摄像头失败："+(e.name||"UNKNOWN")}
