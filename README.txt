@@ -1,10 +1,10 @@
-NOVA VISION V2
-在 V1 基础上增加：
-- 粒子跟随
-- 扫描线
-- Glitch 故障视觉
-- 张嘴时增强 glitch 和粒子
-- 更完整的 HUD
-- 继续保持低负载设计
+NOVA VISION V3
+V2 + 眼睛/嘴巴互动：
+- 眨眼检测并触发粒子/闪光
+- 张嘴检测并增强粒子/Glitch
+- 鼻子位置判断左右移动
+- HUD 显示 Eyes / Mouth / Gesture
+- 保留扫描线、故障和粒子
+- 低分辨率处理，适合旧 Mac
 
-部署：将 index.html 上传到 GitHub Pages，使用 HTTPS 打开并允许摄像头。
+部署：GitHub Pages/HTTPS/localhost。

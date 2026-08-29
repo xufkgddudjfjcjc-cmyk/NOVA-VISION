@@ -3,58 +3,77 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>NOVA VISION — V2</title>
+<title>NOVA VISION — V3</title>
 <style>
-:root{--y:#ffd21c}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030303;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
+:root{--y:#ffd21c;--bg:#030303}*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif}
 #app{position:relative;width:100%;height:100%}video{display:none}canvas{position:absolute;inset:0;width:100%;height:100%}
 #scan{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(to bottom,transparent 0,transparent 3px,rgba(255,255,255,.025) 4px);mix-blend-mode:screen}
 header{position:absolute;z-index:5;top:22px;left:24px;right:24px;display:flex;justify-content:space-between;letter-spacing:.16em;font-size:12px}.brand{font-weight:700}.live{display:flex;gap:8px;align-items:center}.dot{width:7px;height:7px;border-radius:50%;background:var(--y);box-shadow:0 0 14px var(--y)}
-.panel{position:absolute;z-index:5;left:24px;bottom:24px;padding:14px 16px;border:1px solid #ffffff2b;background:#0008;backdrop-filter:blur(12px);border-radius:12px;min-width:205px}.row{display:flex;justify-content:space-between;gap:30px;font-size:10px;line-height:2.1;color:#999}.row b{color:#fff;font-weight:500}
+.panel{position:absolute;z-index:5;left:24px;bottom:24px;padding:13px 16px;border:1px solid #ffffff2b;background:#0009;backdrop-filter:blur(12px);border-radius:12px;min-width:220px}.row{display:flex;justify-content:space-between;gap:30px;font-size:10px;line-height:2.05;color:#999}.row b{color:#fff;font-weight:500}
 #start{position:absolute;z-index:10;left:50%;top:50%;transform:translate(-50%,-50%);padding:14px 24px;border:1px solid var(--y);border-radius:12px;background:#080808ed;color:#fff;font-size:14px;letter-spacing:.08em;cursor:pointer;box-shadow:0 0 35px #ffd21c18}
 #hint{position:absolute;z-index:5;left:50%;bottom:26px;transform:translateX(-50%);font-size:10px;opacity:.55;white-space:nowrap}
 .corner{position:absolute;z-index:4;width:24px;height:24px;border-color:#ffd21c99}.c1{left:18px;top:70px;border-left:1px solid;border-top:1px solid}.c2{right:18px;top:70px;border-right:1px solid;border-top:1px solid}.c3{left:18px;bottom:18px;border-left:1px solid;border-bottom:1px solid}.c4{right:18px;bottom:18px;border-right:1px solid;border-bottom:1px solid}
+#flash{position:absolute;inset:0;background:#ffd21c;opacity:0;pointer-events:none;z-index:2}
 </style>
 </head>
 <body><div id="app">
-<video id="video" playsinline muted></video><canvas id="view"></canvas><div id="scan"></div>
-<header><div class="brand">NOVA / VISION 02</div><div class="live"><span class="dot"></span><span id="status">STANDBY</span></div></header>
+<video id="video" playsinline muted></video><canvas id="view"></canvas><div id="scan"></div><div id="flash"></div>
+<header><div class="brand">NOVA / VISION 03</div><div class="live"><span class="dot"></span><span id="status">STANDBY</span></div></header>
 <div class="corner c1"></div><div class="corner c2"></div><div class="corner c3"></div><div class="corner c4"></div>
 <div class="panel">
 <div class="row"><span>FACE</span><b id="face">NOT FOUND</b></div>
-<div class="row"><span>TRACKING</span><b id="tracking">OFF</b></div>
+<div class="row"><span>EYES</span><b id="eyes">--</b></div>
+<div class="row"><span>MOUTH</span><b id="mouth">--</b></div>
+<div class="row"><span>GESTURE</span><b id="gesture">NONE</b></div>
 <div class="row"><span>PARTICLES</span><b id="particles">0</b></div>
-<div class="row"><span>GLITCH</span><b id="glitch">0%</b></div>
 <div class="row"><span>FPS</span><b id="fps">--</b></div>
 </div>
-<button id="start">START CAMERA</button><div id="hint">移动脸部 · 靠近镜头 · 张嘴会增强视觉效果</div>
+<button id="start">START CAMERA</button><div id="hint">眨眼 · 张嘴 · 左右移动 · 靠近镜头</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
 <script>
 const v=document.getElementById("video"),c=document.getElementById("view"),x=c.getContext("2d");
-const $=id=>document.getElementById(id);let W,H,dpr,mirror=true,faces=[],smooth=null,particles=[],frame=0,last=performance.now(),fps=0,glitch=0;
+let W,H,dpr,mirror=true,smooth=null,particles=[],frames=0,last=performance.now(),blinkLatch=false,mouthLatch=false,flash=0,lastAction=0;
+const $=id=>document.getElementById(id);
 function resize(){dpr=Math.min(devicePixelRatio||1,1.5);W=c.clientWidth;H=c.clientHeight;c.width=W*dpr;c.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}addEventListener("resize",resize);resize();
-function p(q){return{x:(mirror?1-q.x:q.x)*W,y:q.y*H}}
-function box(lm){
+function pt(q){return{x:(mirror?1-q.x:q.x)*W,y:q.y*H}}
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function eyeAspect(lm,top,bottom,left,right){const A=dist(lm[top],lm[bottom]),B=dist(lm[left],lm[right]);return B?A/B:0}
+function mouthOpen(lm){return Math.abs(lm[13].y-lm[14].y)}
+function faceBox(lm){
  let a=1,b=1,d=0,e=0;for(const q of lm){a=Math.min(a,q.x);b=Math.min(b,q.y);d=Math.max(d,q.x);e=Math.max(e,q.y)}
  let px=(d-a)*.12,py=(e-b)*.12;a=Math.max(0,a-px);d=Math.min(1,d+px);b=Math.max(0,b-py);e=Math.min(1,e+py);
- const A=p({x:a,y:b}),B=p({x:d,y:e});let r={x:Math.min(A.x,B.x),y:Math.min(A.y,B.y),w:Math.abs(B.x-A.x),h:Math.abs(B.y-A.y)};
+ const A=pt({x:a,y:b}),B=pt({x:d,y:e});let r={x:Math.min(A.x,B.x),y:Math.min(A.y,B.y),w:Math.abs(B.x-A.x),h:Math.abs(B.y-A.y)};
  if(smooth){r.x=smooth.x*.72+r.x*.28;r.y=smooth.y*.72+r.y*.28;r.w=smooth.w*.72+r.w*.28;r.h=smooth.h*.72+r.h*.28}smooth=r;
  x.save();x.strokeStyle="#ffd21c";x.lineWidth=2;x.shadowColor="#ffd21c";x.shadowBlur=10;x.strokeRect(r.x,r.y,r.w,r.h);x.shadowBlur=0;x.fillStyle="#ffd21c";x.font="10px sans-serif";x.fillText("FACE // LOCKED",r.x,r.y-8);
  const s=12;x.lineWidth=3;[[r.x,r.y,1,1],[r.x+r.w,r.y,-1,1],[r.x,r.y+r.h,1,-1],[r.x+r.w,r.y+r.h,-1,-1]].forEach(q=>{x.beginPath();x.moveTo(q[0],q[1]+q[3]*s);x.lineTo(q[0],q[1]);x.lineTo(q[0]+q[2]*s,q[1]);x.stroke()});x.restore();return r}
-function spawn(b,n=5){for(let i=0;i<n;i++){const ang=Math.random()*Math.PI*2,rad=Math.random()*Math.max(b.w,b.h)*.45;particles.push({x:b.x+b.w/2+Math.cos(ang)*rad,y:b.y+b.h/2+Math.sin(ang)*rad,vx:(Math.random()-.5)*1.8,vy:(Math.random()-.5)*1.8,life:30+Math.random()*50})}}
-function drawParticles(){x.save();x.fillStyle="#ffd21c";x.shadowColor="#ffd21c";x.shadowBlur=8;for(let i=particles.length-1;i>=0;i--){let q=particles[i];q.x+=q.vx;q.y+=q.vy;q.life--;x.globalAlpha=Math.max(0,q.life/80);x.fillRect(q.x,q.y,1.6,1.6);if(q.life<=0)particles.splice(i,1)}x.restore()}
-function drawGlitch(amount){if(amount<=0)return;x.save();x.globalAlpha=amount*.16;for(let i=0;i<5;i++){let yy=Math.random()*H,hh=2+Math.random()*8;x.drawImage(c,0,yy,W,hh,(Math.random()-.5)*amount*30,yy,W,hh)}x.restore()}
+function spawn(b,n=4,boost=1){for(let i=0;i<n;i++){let ang=Math.random()*Math.PI*2,rad=Math.random()*Math.max(b.w,b.h)*.45;particles.push({x:b.x+b.w/2+Math.cos(ang)*rad,y:b.y+b.h/2+Math.sin(ang)*rad,vx:(Math.random()-.5)*2*boost,vy:(Math.random()-.5)*2*boost,life:30+Math.random()*60})}}
+function drawParticles(){x.save();x.fillStyle="#ffd21c";x.shadowColor="#ffd21c";x.shadowBlur=8;for(let i=particles.length-1;i>=0;i--){let q=particles[i];q.x+=q.vx;q.y+=q.vy;q.life--;x.globalAlpha=Math.max(0,q.life/80);x.fillRect(q.x,q.y,1.7,1.7);if(q.life<=0)particles.splice(i,1)}x.restore()}
+function glitch(amount){if(amount<=0)return;x.save();x.globalAlpha=amount*.17;for(let i=0;i<4;i++){let yy=Math.random()*H,hh=2+Math.random()*7;x.drawImage(c,0,yy,W,hh,(Math.random()-.5)*amount*40,yy,W,hh)}x.restore()}
+function action(name,b){const now=performance.now();if(now-lastAction<700)return;lastAction=now;flash=.16;spawn(b,18,2.8);$("gesture").textContent=name}
 function results(r){
- x.clearRect(0,0,W,H);if(r.image){x.save();if(mirror){x.translate(W,0);x.scale(-1,1)}let k=Math.max(W/r.image.width,H/r.image.height),dw=r.image.width*k,dh=r.image.height*k;x.drawImage(r.image,(W-dw)/2,(H-dh)/2,dw,dh);x.restore()}
- faces=r.multiFaceLandmarks||[];
- if(faces.length){$("face").textContent="DETECTED";$("tracking").textContent="ON";$("status").textContent="LIVE";const b=box(faces[0]);
-  // 嘴巴开合：上唇 13 / 下唇 14
-  const mouth=Math.abs(faces[0][13].y-faces[0][14].y);const intensity=Math.min(1,Math.max(0,(mouth-.015)/.07));
-  glitch=intensity;spawn(b,2+Math.floor(intensity*7));
- }else{$("face").textContent="NOT FOUND";$("tracking").textContent="SEARCHING";$("status").textContent="SEARCHING";smooth=null;glitch*=.92}
- drawParticles();$("particles").textContent=particles.length; $("glitch").textContent=Math.round(glitch*100)+"%";drawGlitch(glitch);
- frame++;let now=performance.now();if(now-last>1000){fps=Math.round(frame*1000/(now-last));$("fps").textContent=fps;frame=0;last=now}
+ x.clearRect(0,0,W,H);
+ if(r.image){x.save();if(mirror){x.translate(W,0);x.scale(-1,1)}let k=Math.max(W/r.image.width,H/r.image.height),dw=r.image.width*k,dh=r.image.height*k;x.drawImage(r.image,(W-dw)/2,(H-dh)/2,dw,dh);x.restore()}
+ const lm=(r.multiFaceLandmarks||[])[0];
+ if(lm){
+   $("face").textContent="DETECTED";$("status").textContent="LIVE";
+   const b=faceBox(lm);
+   const left=eyeAspect(lm,159,145,33,133),right=eyeAspect(lm,386,374,362,263),blink=(left+right)/2;
+   const mo=mouthOpen(lm);
+   $("eyes").textContent=blink<.20?"BLINK":"OPEN";
+   $("mouth").textContent=mo>.055?"OPEN":"CLOSED";
+   if(blink<.20&&!blinkLatch){blinkLatch=true;action("BLINK",b)}
+   if(blink>=.20)blinkLatch=false;
+   if(mo>.055&&!mouthLatch){mouthLatch=true;action("MOUTH OPEN",b)}
+   if(mo<=.055)mouthLatch=false;
+   const nose=lm[1].x;
+   if(nose<.38)$("gesture").textContent="MOVE LEFT";else if(nose>.62)$("gesture").textContent="MOVE RIGHT";else if(performance.now()-lastAction>1000)$("gesture").textContent="NONE";
+   const intensity=Math.min(1,Math.max(0,(mo-.02)/.065));spawn(b,2+Math.floor(intensity*7),1+intensity*2);glitch(intensity);
+ }else{$("face").textContent="NOT FOUND";$("eyes").textContent="--";$("mouth").textContent="--";$("gesture").textContent="NONE";smooth=null}
+ drawParticles();$("particles").textContent=particles.length;
+ if(flash>0){$("flash").style.opacity=flash;flash*=.78;if(flash<.01)flash=0}
+ frames++;const now=performance.now();if(now-last>1000){$("fps").textContent=Math.round(frames*1000/(now-last));frames=0;last=now}
 }
 const mesh=new FaceMesh({locateFile:f=>"https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/"+f});
 mesh.setOptions({maxNumFaces:1,refineLandmarks:false,minDetectionConfidence:.5,minTrackingConfidence:.5});mesh.onResults(results);
