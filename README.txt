@@ -1,12 +1,17 @@
-NOVA VISION V5 — PARTICLE WORLD
+NOVA VISION V5.1 Camera Diagnostic
 
-在 V4.2 Lite 基础上：
-- 人脸成为 Face Core
-- 手掌成为粒子吸引中心
-- 捏合 = GRAB，粒子向手掌聚拢
-- 握拳 = PULL，增强能量
-- 张开手 = BURST，触发粒子爆发
-- 保留轻量化摄像头与低频 AI
-- 粒子上限约 110，避免老 Mac 过载
+这不是最终视觉版本，而是专门排查摄像头问题的诊断版。
+它会显示：
+- 是否为安全上下文
+- getUserMedia 是否存在
+- 摄像头权限状态
+- 摄像头设备状态
+- 浏览器返回的真实错误名
+- 实际视频分辨率
 
-部署：GitHub Pages / HTTPS / localhost。
+使用：
+1. 上传 index.html 到 GitHub Pages。
+2. 打开 HTTPS 网站。
+3. 点击 CHECK CAMERA。
+4. 如果失败，不要反复猜权限；直接把左下角 ERROR 那一行截图发回。
+5. 如果显示 CAMERA OK，说明摄像头没问题，再继续接 AI。
