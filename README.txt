@@ -1,9 +1,14 @@
-NOVA VISION V5.2 STABLE
+NOVA VISION V5.3 STABLE
 
-稳定版：摄像头 + 单人脸 AI + 轻量粒子。
-为了旧款 Mac，暂时关闭 Hands 和高负载 Glitch。
-摄像头独立显示；AI 低频运行，不阻塞视频。
-输入目标：480x360，24fps。
-Face Mesh：约 4 FPS。
-粒子上限：55。
-部署到 GitHub Pages 后用 HTTPS 打开。
+重点：手部 AI 改成手动开启。
+- 默认只运行 Face AI
+- HAND AI 默认 OFF
+- 点击 HUD 的 HAND AI / OFF 才启用 Hands
+- Face AI 约 4 FPS
+- Hand AI 开启后约 1.5 FPS
+- 摄像头 480x360 / 24fps
+- 粒子上限 65
+- 保留人脸框、手部骨架、手掌粒子吸引
+- 关闭 Hands 后可随时恢复到更轻的 Face-only 模式
+
+部署到 GitHub Pages / HTTPS。
